@@ -1,0 +1,134 @@
+# Pre-registered parity gate for py-Pando.
+#
+# Committed BEFORE any algorithmic code (omicverse-rebuildr PROTOCOL Step 0 / CHECKLIST Phase 0).
+# READ-ONLY afterwards: thresholds are never tightened or loosened to make the port pass.
+
+package: py-Pando
+upstream:
+  name: Pando
+  version: "1.1.1"
+  commit: e8abb30ba4a7d403bf7115c9899767a8d889303b
+  source: GitHub
+  url: https://github.com/quadbio/Pando
+
+# Multi-output port: one gate per output, ALL must pass (PARITY_TAXONOMY "multiple outputs").
+algorithm_class: mixed
+
+fixture:
+  path: data/fixture/            # written by tests/make_fixture.py + tests/r_reference_driver.R (gitignored)
+  source: >-
+    10x Genomics Multiome PBMC "pbmc_granulocyte_sorted_10k" filtered matrix,
+    https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_granulocyte_sorted_10k/pbmc_granulocyte_sorted_10k_filtered_feature_bc_matrix.h5
+    (sha256 f6824171378787baab244f559b8b438f79db2eb39f78d17b2196f7ecd2c03549);
+    hg38 (BSgenome.Hsapiens.UCSC.hg38 / UCSC hg38.fa), EnsDb.Hsapiens.v86 annotation via Signac.
+  description: >-
+    2,000 cells (numpy seed 42), 150 variable target genes (Seurat vst), the peaks within 250 kb of
+    those genes, RNA LogNormalize and peak TF-IDF computed in R and shared with Python, Pando's own
+    bundled motifs and motif2tf table.
+
+reference_command: tests/r_reference_driver.R
+seed: 42
+
+outputs:
+  # --- initiate_grn -----------------------------------------------------------
+  - name: candidate_regions
+    function: initiate_grn
+    class: deterministic-strict
+    metric: exact equality of region strings and region->peak index
+    threshold: 1.0           # fraction identical; must be exactly 1
+
+  # --- find_peaks_near_genes ---------------------------------------------------
+  - name: peaks_near_genes_signac
+    function: find_peaks_near_genes(method="Signac")
+    class: deterministic-strict
+    metric: exact equality of the peak x gene hit matrix
+    threshold: 1.0
+  - name: peaks_near_genes_great
+    function: find_peaks_near_genes(method="GREAT")
+    class: deterministic-strict
+    metric: exact equality of the peak x gene hit matrix
+    threshold: 1.0
+
+  # --- find_motifs -------------------------------------------------------------
+  # Same MOODS C++ engine on both sides; a float-threshold tie can flip a borderline hit.
+  - name: motif_matrix
+    function: find_motifs
+    class: classification
+    metric: fraction of identical region x motif entries; Jaccard of the TRUE sets
+    threshold: {agreement: 0.9999, jaccard: 0.999}
+
+  # --- infer_grn, method = glm (Pando default) ---------------------------------
+  - name: glm_keys
+    function: infer_grn(method="glm")
+    class: deterministic-strict
+    metric: identical set of (target, tf, region) rows and identical gof targets
+    threshold: 1.0
+  - name: glm_coefficients
+    function: infer_grn(method="glm")
+    class: deterministic-standard
+    metric: max |delta| / (rtol * |ref| + atol) over estimate, std_err, statistic, gof rsq, corr
+    parity_rtol: 1.0e-8
+    parity_atol: 1.0e-10
+    threshold: 1.0
+  - name: glm_pvalues
+    function: infer_grn(method="glm")
+    class: inference
+    metric: max |delta(-log10 pval)| and |delta(-log10 padj)|; Spearman on -log10 p
+    threshold: {max_abs_dlog10p: 1.0e-6, spearman: 0.9999}
+
+  # --- infer_grn, method = glmnet / cv.glmnet ----------------------------------
+  # Independent coordinate-descent implementation (glmnet's Fortran/C++ is not reused):
+  # ordinal on coefficients + support overlap, chosen lambda near-exact.
+  - name: glmnet_coefficients
+    function: infer_grn(method="glmnet")
+    class: ordinal
+    metric: Pearson of estimates over the union of terms; Jaccard of non-zero support; rel. diff of chosen lambda
+    threshold: {pearson: 0.999, support_jaccard: 0.95, lambda_rel: 1.0e-4}
+  - name: cvglmnet_coefficients
+    function: infer_grn(method="cv.glmnet")   # folds from an emulation of R's set.seed + sample
+    class: ordinal
+    metric: as glmnet_coefficients
+    threshold: {pearson: 0.999, support_jaccard: 0.95, lambda_rel: 1.0e-4}
+
+  # --- infer_grn, method = xgb ---------------------------------------------------
+  - name: xgb_gain
+    function: infer_grn(method="xgb")
+    class: ranked
+    metric: per-target Spearman of gain, median over targets; top-10 Jaccard per target, median
+    threshold: {spearman: 0.9, top10_jaccard: 0.8}
+
+  # --- infer_grn, method = bagging_ridge / bayesian_ridge --------------------------
+  # Pando calls scikit-learn through reticulate; py-Pando calls the same estimators directly.
+  - name: bagging_ridge
+    function: infer_grn(method="bagging_ridge")
+    class: deterministic-standard
+    metric: max |delta| / (rtol * |ref| + atol) over estimate; max |delta(-log10 pval)|
+    parity_rtol: 1.0e-8
+    parity_atol: 1.0e-10
+    threshold: {coef: 1.0, max_abs_dlog10p: 1.0e-6}
+  - name: bayesian_ridge
+    function: infer_grn(method="bayesian_ridge")
+    class: deterministic-standard
+    metric: as bagging_ridge, plus est_variance
+    parity_rtol: 1.0e-8
+    parity_atol: 1.0e-10
+    threshold: {coef: 1.0, max_abs_dlog10p: 1.0e-6}
+
+  # --- find_modules (on the glm network) ---------------------------------------
+  - name: modules
+    function: find_modules
+    class: classification
+    metric: per TF and sign, Jaccard of module genes and of module regions; mean over modules; identical module TF sets
+    threshold: {mean_jaccard: 0.99, tf_set_jaccard: 1.0}
+
+not_ported:
+  - fit_brms: "Bayesian models via Stan (brms); no Python Stan dependency is taken on. Listed as skipped in port.yaml."
+
+acceleration:
+  enabled: true
+  max_iterations: 20
+  must_pass_gate: true
+
+audit_class: null
+created_by: claude (agent P, Epione session)
+created_at: 2026-10-13

@@ -1,0 +1,10 @@
+__pycache__/
+*.egg-info/
+dist/
+build/
+.ipynb_checkpoints/
+Pando-ref/
+data/fixture/
+data/reference/
+*.pyc
+.pytest_cache/
