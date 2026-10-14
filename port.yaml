@@ -1,0 +1,190 @@
+# port.yaml — machine-readable manifest read by omicverse.org/ports
+# Spec: https://github.com/omicverse/omicverse-org-home/blob/main/docs/PORT_MANIFEST.md
+# functions[] refreshed by `python -m engine.r_function_audit --port-yaml` on 2026-10-13;
+# hand-written fields (notes, parity, tests, aliases, skipped/partial statuses) are preserved on refresh.
+schema: omicverse-port/v1
+package: py-Pando
+pypi: pypando
+import_name: pypando
+language: python
+domain: single-cell
+upstream:
+  name: Pando
+  source: GitHub
+  version: 1.1.1
+  url: https://github.com/quadbio/Pando
+  license: MIT
+  citation: null
+omicverse:
+  module: null
+  since: null
+parity:
+  status: unverified
+  algorithm_class: mixed
+  metric: exact equality of region strings and region->peak index
+  threshold: 1.0
+  value: null
+  fixture: 2,000 cells (numpy seed 42), 150 variable target genes (Seurat vst), the peaks within 250 kb
+    of those genes, RNA LogNormalize and peak TF-IDF computed in R and shared with Python, Pando's own
+    bundled motifs and motif2tf table.
+  test: tests/test_exact_match.py
+artifacts:
+  audit: AUDIT.md
+  report: RECONSTRUCTION_REPORT.md
+  compare_notebook: examples/compare_R_vs_Python.ipynb
+  function_notebook: examples/function_by_function_R_parity.ipynb
+functions:
+- r: DefaultNetwork
+  py: pypando.DefaultNetwork
+  status: ported
+- r: GRNData
+  py: null
+  status: planned
+- r: GetAssay
+  py: null
+  status: planned
+- r: GetAssaySummary
+  py: null
+  status: planned
+- r: GetGRN
+  py: pypando.GetGRN
+  status: ported
+- r: GetNetwork
+  py: pypando.GetNetwork
+  status: ported
+- r: LayerData
+  py: null
+  status: planned
+- r: Network
+  py: null
+  status: planned
+- r: NetworkFeatures
+  py: pypando.NetworkFeatures
+  status: ported
+- r: NetworkGraph
+  py: pypando.NetworkGraph
+  status: ported
+- r: NetworkModules
+  py: pypando.NetworkModules
+  status: ported
+- r: NetworkParams
+  py: pypando.NetworkParams
+  status: ported
+- r: NetworkRegions
+  py: pypando.NetworkRegions
+  status: ported
+- r: NetworkTFs
+  py: pypando.NetworkTFs
+  status: ported
+- r: Params
+  py: pypando.Params
+  status: ported
+- r: Regions
+  py: null
+  status: planned
+- r: RegulatoryNetwork
+  py: null
+  status: planned
+- r: VariableFeatures
+  py: null
+  status: planned
+- r: aggregate_assay
+  py: null
+  status: planned
+- r: aggregate_matrix
+  py: pypando.aggregate_matrix
+  status: ported
+- r: coef
+  py: pypando.coef
+  status: ported
+- r: create_GRNData
+  py: null
+  status: planned
+- r: find_modules
+  py: pypando.find_modules
+  status: ported
+- r: find_motifs
+  py: pypando.find_motifs
+  status: ported
+- r: find_peaks_near_genes
+  py: pypando.find_peaks_near_genes
+  status: ported
+- r: fit_bagging_ridge
+  py: pypando.fit_bagging_ridge
+  status: ported
+- r: fit_bayesian_ridge
+  py: pypando.fit_bayesian_ridge
+  status: ported
+- r: fit_brms
+  py: pypando.fit_brms
+  status: ported
+- r: fit_cvglmnet
+  py: pypando.fit_cvglmnet
+  status: ported
+- r: fit_glm
+  py: pypando.fit_glm
+  status: ported
+- r: fit_glmnet
+  py: pypando.fit_glmnet
+  status: ported
+- r: fit_grn_models
+  py: pypando.fit_grn_models
+  status: ported
+- r: fit_model
+  py: pypando.fit_model
+  status: ported
+- r: fit_xgb
+  py: pypando.fit_xgb
+  status: ported
+- r: format_coefs
+  py: pypando.format_coefs
+  status: ported
+- r: get_network_graph
+  py: pypando.get_network_graph
+  status: ported
+- r: get_tf_network
+  py: null
+  status: planned
+- r: gof
+  py: pypando.gof
+  status: ported
+- r: infer_grn
+  py: pypando.infer_grn
+  status: ported
+- r: initiate_grn
+  py: pypando.initiate_grn
+  status: ported
+- r: map_par
+  py: null
+  status: planned
+- r: no_legend
+  py: null
+  status: planned
+- r: no_margin
+  py: null
+  status: planned
+- r: no_x_text
+  py: null
+  status: planned
+- r: no_y_text
+  py: null
+  status: planned
+- r: plot_gof
+  py: null
+  status: planned
+- r: plot_module_metrics
+  py: null
+  status: planned
+- r: plot_network_graph
+  py: null
+  status: planned
+- r: plot_tf_network
+  py: null
+  status: planned
+- r: print
+  py: null
+  status: planned
+- r: sparse_cor
+  py: pypando.sparse_cor
+  status: ported
+classes: []
