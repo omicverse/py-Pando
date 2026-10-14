@@ -42,9 +42,9 @@ Within Epione: `epione.grn.pando(rna, atac, genome="hg38", genes=targets)`.
 | `find_peaks_near_genes` (Signac, GREAT) | `pp.find_peaks_near_genes` | identical |
 | `infer_grn(method = "glm")` | `pp.infer_grn` | identical rows; estimates / SE / t / rsq to ~1e-14; -log10 p to 4e-13 |
 | `infer_grn(method = "glmnet")` | | lambda identical; coefficients Pearson 0.9999 (see notes) |
-| `infer_grn(method = "cv.glmnet")` | | R's folds reproduced exactly; see report |
-| `infer_grn(method = "xgb")` | | see notes (xgboost >= 3 in R drops Pando's parameters) |
-| `infer_grn(method = "bagging_ridge" / "bayesian_ridge")` | | see report |
+| `infer_grn(method = "cv.glmnet")` | | R's folds reproduced; coefficients within 5e-14 |
+| `infer_grn(method = "xgb")` | | **gate fails vs installed R** (xgboost >= 3 drops Pando's parameters); identical (2e-16) with them honoured |
+| `infer_grn(method = "bagging_ridge" / "bayesian_ridge")` | | ~1e-14 (NumPy seeded as in R) |
 | `find_modules` | `pp.find_modules` | identical modules |
 | `fit_model`, `fit_glm`, `fit_glmnet`, `fit_cvglmnet`, `fit_xgb`, `fit_bagging_ridge`, `fit_bayesian_ridge` | same names | per-function, to ~1e-14 (notebook 3) |
 | `format_coefs`, `sparse_cor`, `aggregate_matrix`, `aggregate_assay`, `GetAssaySummary` | same names | exact |

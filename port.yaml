@@ -14,19 +14,18 @@ upstream:
   version: 1.1.1
   url: https://github.com/quadbio/Pando
   license: MIT
-  citation: null
+  citation: Fleck et al. Inferring and perturbing cell fate regulomes in human brain organoids. Nature 621, 365-372 (2023).
 omicverse:
-  module: null
+  module: epione.grn.pando (Epione)
   since: null
 parity:
-  status: unverified
+  status: partial
   algorithm_class: mixed
-  metric: exact equality of region strings and region->peak index
-  threshold: 1.0
-  value: null
-  fixture: 2,000 cells (numpy seed 42), 150 variable target genes (Seurat vst), the peaks within 250 kb
-    of those genes, RNA LogNormalize and peak TF-IDF computed in R and shared with Python, Pando's own
-    bundled motifs and motif2tf table.
+  metric: per-output gates (data/manifest.yaml)
+  threshold: see RECONSTRUCTION_REPORT.md §3.1
+  value: 13/14 gates pass vs installed R; xgb_gain fails because R xgboost>=3 drops Pando's params (passes 1.0/1.0 with them
+    honoured)
+  fixture: '10x Multiome PBMC 10k: 2,000 cells, 150 targets, 7,141 peaks'
   test: tests/test_exact_match.py
 artifacts:
   audit: AUDIT.md
@@ -38,14 +37,16 @@ functions:
   py: pypando.DefaultNetwork
   status: ported
 - r: GRNData
-  py: null
-  status: planned
+  py: pypando.GRNData
+  status: ported
+  note: dataclass
 - r: GetAssay
   py: null
-  status: planned
+  status: skipped
+  note: Seurat accessor; use the AnnData objects
 - r: GetAssaySummary
-  py: null
-  status: planned
+  py: pypando.GetAssaySummary
+  status: ported
 - r: GetGRN
   py: pypando.GetGRN
   status: ported
@@ -54,10 +55,12 @@ functions:
   status: ported
 - r: LayerData
   py: null
-  status: planned
+  status: skipped
+  note: Seurat accessor; use AnnData X/layers
 - r: Network
-  py: null
-  status: planned
+  py: pypando.Network
+  status: ported
+  note: dataclass
 - r: NetworkFeatures
   py: pypando.NetworkFeatures
   status: ported
@@ -80,17 +83,20 @@ functions:
   py: pypando.Params
   status: ported
 - r: Regions
-  py: null
-  status: planned
+  py: pypando.Regions
+  status: ported
+  note: dataclass
 - r: RegulatoryNetwork
-  py: null
-  status: planned
+  py: pypando.RegulatoryNetwork
+  status: ported
+  note: dataclass
 - r: VariableFeatures
   py: null
-  status: planned
+  status: skipped
+  note: Seurat accessor; pass variable_features=
 - r: aggregate_assay
-  py: null
-  status: planned
+  py: pypando.aggregate_assay
+  status: ported
 - r: aggregate_matrix
   py: pypando.aggregate_matrix
   status: ported
@@ -98,8 +104,8 @@ functions:
   py: pypando.coef
   status: ported
 - r: create_GRNData
-  py: null
-  status: planned
+  py: pypando.create_GRNData
+  status: ported
 - r: find_modules
   py: pypando.find_modules
   status: ported
@@ -117,7 +123,8 @@ functions:
   status: ported
 - r: fit_brms
   py: pypando.fit_brms
-  status: ported
+  status: skipped
+  note: Stan/brms not ported; raises NotImplementedError
 - r: fit_cvglmnet
   py: pypando.fit_cvglmnet
   status: ported
@@ -127,6 +134,7 @@ functions:
 - r: fit_glmnet
   py: pypando.fit_glmnet
   status: ported
+  note: character family (as infer_grn passes it); R function-family default not ported
 - r: fit_grn_models
   py: pypando.fit_grn_models
   status: ported
@@ -136,6 +144,7 @@ functions:
 - r: fit_xgb
   py: pypando.fit_xgb
   status: ported
+  note: uses Pando's params; R xgboost>=3 drops them (see report)
 - r: format_coefs
   py: pypando.format_coefs
   status: ported
@@ -144,7 +153,8 @@ functions:
   status: ported
 - r: get_tf_network
   py: null
-  status: planned
+  status: skipped
+  note: errors in R for glm networks at default keep_all_edges=FALSE (filters a column it never creates)
 - r: gof
   py: pypando.gof
   status: ported
@@ -156,34 +166,44 @@ functions:
   status: ported
 - r: map_par
   py: null
-  status: planned
+  status: skipped
+  note: R parallelism helper
 - r: no_legend
   py: null
-  status: planned
+  status: skipped
+  note: ggplot2 theme helper
 - r: no_margin
   py: null
-  status: planned
+  status: skipped
+  note: ggplot2 theme helper
 - r: no_x_text
   py: null
-  status: planned
+  status: skipped
+  note: ggplot2 theme helper
 - r: no_y_text
   py: null
-  status: planned
+  status: skipped
+  note: ggplot2 theme helper
 - r: plot_gof
-  py: null
-  status: planned
+  py: pypando.plot_gof
+  status: ported
+  note: matplotlib
 - r: plot_module_metrics
-  py: null
-  status: planned
+  py: pypando.plot_module_metrics
+  status: ported
+  note: matplotlib
 - r: plot_network_graph
-  py: null
-  status: planned
+  py: pypando.plot_network_graph
+  status: ported
+  note: matplotlib
 - r: plot_tf_network
   py: null
-  status: planned
+  status: skipped
+  note: depends on get_tf_network
 - r: print
   py: null
-  status: planned
+  status: skipped
+  note: print methods; classes have __repr__
 - r: sparse_cor
   py: pypando.sparse_cor
   status: ported

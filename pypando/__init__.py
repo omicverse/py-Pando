@@ -13,6 +13,7 @@ Functional API (mirrors the R package)::
     grn = pp.find_modules(grn)
     pp.coef(grn); pp.gof(grn); pp.NetworkModules(grn)
 """
+from . import data
 from .annotation import annotation_from_gtf
 from .core import Pando
 from .grn import (
