@@ -28,7 +28,7 @@ from .grn import (
     regions_near_genes,
     subset_regions,
 )
-from .graph import get_network_graph
+from .graph import get_network_graph, get_tf_network
 from .models import (
     fit_bagging_ridge,
     fit_bayesian_ridge,
@@ -60,7 +60,7 @@ from .objects import (
     gof,
 )
 from .objects import GetAssaySummary, aggregate_assay, create_GRNData
-from .plots import plot_gof, plot_module_metrics, plot_network_graph
+from .plots import plot_gof, plot_module_metrics, plot_network_graph, plot_tf_network
 from .utils import aggregate_matrix, sparse_cor
 
 __all__ = [
@@ -112,6 +112,8 @@ __all__ = [
     "plot_gof",
     "plot_module_metrics",
     "plot_network_graph",
+    "plot_tf_network",
+    "get_tf_network",
     "sparse_cor",
 ]
-__version__ = "0.1.0"
+__version__ = "0.1.1"

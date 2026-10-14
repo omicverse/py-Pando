@@ -23,7 +23,7 @@ parity:
   algorithm_class: mixed
   metric: per-output gates (data/manifest.yaml)
   threshold: see RECONSTRUCTION_REPORT.md §3.1
-  value: 13/14 gates pass vs installed R; xgb_gain fails because R xgboost>=3 drops Pando's params (passes 1.0/1.0 with them
+  value: 15/16 gates pass (13/14 pipeline + 2/2 get_tf_network) vs installed or intent-patched R; xgb_gain fails because R xgboost>=3 drops Pando's params (passes 1.0/1.0 with them
     honoured)
   fixture: '10x Multiome PBMC 10k: 2,000 cells, 150 targets, 7,141 peaks'
   test: tests/test_exact_match.py
@@ -152,9 +152,9 @@ functions:
   py: pypando.get_network_graph
   status: ported
 - r: get_tf_network
-  py: null
-  status: skipped
-  note: errors in R for glm networks at default keep_all_edges=FALSE (filters a column it never creates)
+  py: pypando.get_tf_network
+  status: ported
+  note: "ported with a fix: the default pruning (keep_all_edges=FALSE) uses the per-path mean -log10(padj) it computes, and `order` is honoured; R tests a column name that never exists and silently prunes on the mean estimate, and its filter(order <= order) compares the column with itself. keep_all_edges=True with order=inf equals R (gate tf_network_all_edges)."
 - r: gof
   py: pypando.gof
   status: ported
@@ -197,9 +197,9 @@ functions:
   status: ported
   note: matplotlib
 - r: plot_tf_network
-  py: null
-  status: skipped
-  note: depends on get_tf_network
+  py: pypando.plot_tf_network
+  status: ported
+  note: "matplotlib tree / circular layout (ggraph layout='tree'); coordinates are not ggraph's"
 - r: print
   py: null
   status: skipped

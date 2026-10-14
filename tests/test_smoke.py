@@ -13,7 +13,7 @@ from pypando.rrng import RRandom
 
 
 def test_import_and_bundled_data():
-    assert pp.__version__ == "0.1.0"
+    assert pp.__version__ == "0.1.1"
     motifs = pp.load_pando_motifs()
     m2t = pp.load_motif2tf()
     assert len(motifs) == 1590
@@ -96,3 +96,55 @@ def test_format_coefs_swaps_tf_region():
     assert out["tf"].tolist() == ["TFA", "TFB"]
     assert out["region"].tolist() == ["chr1-10-20", "chr2-5-9"]
     assert list(out.columns[:4]) == ["tf", "target", "region", "term"]
+
+
+def _toy_module_graph():
+    # A -> B -> D (activating, weak) and A -> C -> D (repressive, strong); A -> E; D -> F
+    e = pd.DataFrame({
+        "from_node": ["A", "A", "B", "C", "A", "D"],
+        "to_node": ["B", "C", "D", "D", "E", "F"],
+        "estimate": [0.9, -0.5, 0.9, -0.5, 0.2, 0.3],
+        "padj": [0.04, 1e-10, 0.04, 1e-10, 0.01, 0.02],
+    })
+    e["dir"] = np.sign(e["estimate"])
+    return e
+
+
+def test_tf_network_paths_and_pruning():
+    from pypando.graph import tf_network_from_edges
+
+    e = _toy_module_graph()
+    feats = ["A", "B", "C", "D", "E", "F"]
+    full = tf_network_from_edges(e, "A", feats, order=np.inf, keep_all_edges=True)
+    p = full["paths"].set_index("path")
+    # all shortest paths, including R's zero-length path to the root itself
+    assert set(p.index) == {"A", "A;B", "A;C", "A;E", "A;B;D", "A;C;D", "A;B;D;F", "A;C;D;F"}
+    assert p.loc["A;C;D", "dir"] == 1.0 and p.loc["A;C;D", "order"] == 2
+    assert np.isclose(p.loc["A;C;D", "mean_log_padj"], 10.0)
+    # default: leaf D keeps its most significant path (A;C;D), not the largest mean estimate (A;B;D)
+    d = tf_network_from_edges(e, "A", feats)["edges"]
+    to_d = set(zip(d.loc[d.end_node == "D", "from_node"], d.loc[d.end_node == "D", "to_node"]))
+    assert to_d == {("A", "C"), ("C", "D")}
+    # order is honoured (R ignores it): with order=1 only direct edges remain
+    o1 = tf_network_from_edges(e, "A", feats, order=1, keep_all_edges=True)["edges"]
+    assert set(o1.end_node) == {"B", "C", "E"}
+    # one row per (edge, end node, combined sign), sorted by comb_dir as R's arrange()
+    assert len(full["edges"]) == 12   # D -> F reached through B and through C, same sign: kept once
+    assert full["edges"]["comb_dir"].is_monotonic_increasing
+    with pytest.raises(ValueError, match="fewer than 3"):
+        tf_network_from_edges(e, "D", ["D", "F"])
+
+
+def test_plot_tf_network_returns_figure():
+    import matplotlib
+
+    matplotlib.use("Agg")
+    from pypando.graph import tf_network_from_edges
+    from pypando.objects import Network
+
+    net = Network(features=np.array(list("ABCDEF")), fit=pd.DataFrame(), coefs=pd.DataFrame())
+    res = tf_network_from_edges(_toy_module_graph(), "A", list("ABCDEF"))
+    net.graphs["tf_graphs"] = {"A": {"nodes": res["nodes"], "edges": res["edges"]}}
+    for circ in (True, False):
+        fig = pp.plot_tf_network(net, "A", circular=circ, label_nodes="all")
+        assert len(fig.axes[0].patches) == len(set(zip(res["edges"].from_node, res["edges"].to_node)))

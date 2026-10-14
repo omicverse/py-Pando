@@ -52,7 +52,8 @@ Within Epione: `epione.grn.pando(rna, atac, genome="hg38", genes=targets)`.
 | `coef`, `gof`, `GetNetwork`, `NetworkModules`, `NetworkTFs`, `NetworkRegions`, `NetworkFeatures`, `NetworkParams`, `NetworkGraph`, `DefaultNetwork`, `GetGRN`, `Params`, `create_GRNData` | same names | accessors |
 | `plot_gof`, `plot_module_metrics`, `plot_network_graph` | same names (matplotlib) | — |
 | `fit_brms` | — | not ported (Stan) |
-| `get_tf_network`, `plot_tf_network` | — | not ported (see report) |
+| `get_tf_network` | `pp.get_tf_network` | **deliberate fix**: the default prunes each leaf to its most significant path (mean −log10 padj) and honours `order`; R 1.1.1 silently prunes on the mean estimate and ignores `order`. `keep_all_edges=True, order=np.inf` = R, identical edges; default = R with the intended fix, identical edges |
+| `plot_tf_network` | `pp.plot_tf_network` | matplotlib tree / circular layout (ggraph `layout = 'tree'`) |
 
 Full numbers: [RECONSTRUCTION_REPORT.md](RECONSTRUCTION_REPORT.md) and `examples/compare_R_vs_Python.ipynb`.
 

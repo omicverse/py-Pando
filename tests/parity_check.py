@@ -8,6 +8,7 @@ Thresholds are read from the manifest, never from this file.
 from __future__ import annotations
 
 import json
+from collections import Counter
 import sys
 from pathlib import Path
 
@@ -239,5 +240,68 @@ def main(ref, cand, out=None):
     return res
 
 
+# --- get_tf_network (manifest amendment 2026-10-14) -------------------------------------
+TF_NUMERIC = ("estimate", "n_regions", "n_genes", "n_tfs", "pval", "padj", "corr", "dir", "comb_dir")
+TF_VARIANTS = {"tf_network_all_edges": [("R_all", "R_all")],
+               "tf_network_default_intent": [("intent_default", "intent_default"), ("intent_all", "intent_all"),
+                                             ("intent_default_o2", "intent_default_o2")]}
+
+
+def _tf_key(df):
+    return list(zip(df["from_name"], df["to_name"], df["end_node"], df["comb_dir"].astype(float)))
+
+
+def gate_tf_network(ref, cand, gname):
+    g = GATES[gname]
+    rt = pd.read_csv(ref / "tf_networks.tsv", sep="\t", na_values=["NA"], keep_default_na=False)
+    ct = pd.read_csv(cand / "tf_networks.tsv", sep="\t", na_values=["NA"], keep_default_na=False)
+    if (ref / "tf_networks_estimate.f64").exists():  # full-precision copy, same row order
+        rt["estimate"] = np.fromfile(ref / "tf_networks_estimate.f64", dtype="<f8")
+    rs = json.loads((ref / "tf_networks_status.json").read_text())
+    cs = json.loads((cand / "tf_networks_status.json").read_text())
+    tfs_r = (ref / "tf_network_tfs.txt").read_text().split()
+    tfs_c = (cand / "tf_network_tfs.txt").read_text().split()
+    same_nodes = same_edges = tfs_r == tfs_c
+    worst, n_edges, per_tf = 0.0, 0, {}
+    for vr, vc in TF_VARIANTS[gname]:
+        for tf in tfs_r:
+            er = rs.get(f"{vr}/{tf}", "").startswith("error")
+            ec = cs.get(f"{vc}/{tf}", "").startswith("error")
+            if er or ec:
+                ok = er and ec
+                same_nodes &= ok; same_edges &= ok
+                per_tf[f"{vr}/{tf}"] = "both error" if ok else "error on one side"
+                continue
+            r = rt[(rt.variant == vr) & (rt.root == tf)].copy()
+            c = ct[(ct.variant == vc) & (ct.root == tf)].copy()
+            nr = set(r.from_name) | set(r.to_name); nc = set(c.from_name) | set(c.to_name)
+            kr, kc = Counter(_tf_key(r)), Counter(_tf_key(c))
+            same_nodes &= nr == nc; same_edges &= kr == kc
+            n_edges += len(r)
+            r["k"], c["k"] = _tf_key(r), _tf_key(c)
+            m = r.drop_duplicates("k").merge(c.drop_duplicates("k"), on="k", suffixes=("_r", "_c"))
+            for col in TF_NUMERIC:
+                if f"{col}_r" in m and f"{col}_c" in m:
+                    worst = max(worst, _norm_rel(m[f"{col}_r"], m[f"{col}_c"], g["parity_rtol"], g["parity_atol"]))
+            per_tf[f"{vr}/{tf}"] = f"{len(r)} vs {len(c)} edges" + ("" if kr == kc else " DIFFER")
+    th = g["threshold"]
+    return {"identical_nodes": bool(same_nodes), "identical_edges": bool(same_edges), "attr": worst,
+            "n_edges_ref": n_edges, "tfs": tfs_r, "per_tf": per_tf,
+            "pass": bool(same_nodes) == th["identical_nodes"] and bool(same_edges) == th["identical_edges"] and worst <= th["attr"]}
+
+
+def tf_main(ref, cand, out=None):
+    ref, cand = Path(ref), Path(cand)
+    res = {k: gate_tf_network(ref, cand, k) for k in TF_VARIANTS}
+    for k, v in res.items():
+        print(f"{'PASS' if v['pass'] else 'FAIL'}  {k}: " + json.dumps({a: b for a, b in v.items() if a not in ('pass', 'per_tf')}, default=float))
+    if out:
+        Path(out).write_text(json.dumps(res, indent=1, default=float))
+    return res
+
+
 if __name__ == "__main__":
-    main(*sys.argv[1:4])
+    if sys.argv[1] == "--tf":
+        tf_main(*sys.argv[2:5])
+    else:
+        main(*sys.argv[1:4])

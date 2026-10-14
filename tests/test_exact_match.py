@@ -7,6 +7,9 @@ FASTA matching ``BSgenome.Hsapiens.UCSC.hg38``::
 
 Skipped when either variable is unset. Set ``PYPANDO_CAND_DIR`` to reuse a
 finished candidate run instead of recomputing it (``tests/_run_candidate.py``).
+
+The get_tf_network gates need ``PYPANDO_TF_REF_DIR`` (the R driver run with
+``PANDO_TF_NETWORK=1``); ``PYPANDO_TF_CAND_DIR`` reuses ``tests/_run_tf_network.py`` output.
 """
 import os
 import sys
@@ -50,3 +53,26 @@ def test_gate(results, gate):
     if gate not in results:
         pytest.skip(f"no reference output for {gate}")
     assert results[gate]["pass"], f"{gate}: {results[gate]}"
+
+
+TF_REF = os.environ.get("PYPANDO_TF_REF_DIR")
+
+
+@pytest.fixture(scope="module")
+def tf_results(tmp_path_factory):
+    if not TF_REF:
+        pytest.skip("needs PYPANDO_TF_REF_DIR")
+    import parity_check
+
+    cand = os.environ.get("PYPANDO_TF_CAND_DIR")
+    if not cand:
+        import _run_tf_network
+
+        cand = str(tmp_path_factory.mktemp("cand_tf"))
+        _run_tf_network.main(REF, cand, FASTA)
+    return parity_check.tf_main(TF_REF, cand)
+
+
+@pytest.mark.parametrize("gate", ["tf_network_all_edges", "tf_network_default_intent"])
+def test_tf_network_gate(tf_results, gate):
+    assert tf_results[gate]["pass"], f"{gate}: {tf_results[gate]}"

@@ -4,10 +4,10 @@
 
 | Category | Ported | Total | % |
 |---|---|---|---|
-| Exported R functions | 30 | 51 | 58.8% |
+| Exported R functions | 38 | 51 | 74.5% |
 | Internal helpers (reachable) | 1 | 7 | 14.3% |
 
-_Python package exposes 127 unique names._
+_Python package exposes 147 unique names._
 
 ### Exported R functions
 
@@ -16,7 +16,7 @@ _Python package exposes 127 unique names._
 | `DefaultNetwork` | `DefaultNetwork` | ✅ ported |
 | `GRNData` | `—` | ❌ MISSING |
 | `GetAssay` | `—` | ❌ MISSING |
-| `GetAssaySummary` | `—` | ❌ MISSING |
+| `GetAssaySummary` | `GetAssaySummary` | ✅ ported |
 | `GetGRN` | `GetGRN` | ✅ ported |
 | `GetNetwork` | `GetNetwork` | ✅ ported |
 | `LayerData` | `—` | ❌ MISSING |
@@ -31,10 +31,10 @@ _Python package exposes 127 unique names._
 | `Regions` | `—` | ❌ MISSING |
 | `RegulatoryNetwork` | `—` | ❌ MISSING |
 | `VariableFeatures` | `—` | ❌ MISSING |
-| `aggregate_assay` | `—` | ❌ MISSING |
+| `aggregate_assay` | `aggregate_assay` | ✅ ported |
 | `aggregate_matrix` | `aggregate_matrix` | ✅ ported |
 | `coef` | `coef` | ✅ ported |
-| `create_GRNData` | `—` | ❌ MISSING |
+| `create_GRNData` | `create_GRNData` | ✅ ported |
 | `find_modules` | `find_modules` | ✅ ported |
 | `find_motifs` | `find_motifs` | ✅ ported |
 | `find_peaks_near_genes` | `find_peaks_near_genes` | ✅ ported |
@@ -49,7 +49,7 @@ _Python package exposes 127 unique names._
 | `fit_xgb` | `fit_xgb` | ✅ ported |
 | `format_coefs` | `format_coefs` | ✅ ported |
 | `get_network_graph` | `get_network_graph` | ✅ ported |
-| `get_tf_network` | `—` | ❌ MISSING |
+| `get_tf_network` | `get_tf_network` | ✅ ported |
 | `gof` | `gof` | ✅ ported |
 | `infer_grn` | `infer_grn` | ✅ ported |
 | `initiate_grn` | `initiate_grn` | ✅ ported |
@@ -58,10 +58,10 @@ _Python package exposes 127 unique names._
 | `no_margin` | `—` | ❌ MISSING |
 | `no_x_text` | `—` | ❌ MISSING |
 | `no_y_text` | `—` | ❌ MISSING |
-| `plot_gof` | `—` | ❌ MISSING |
-| `plot_module_metrics` | `—` | ❌ MISSING |
-| `plot_network_graph` | `—` | ❌ MISSING |
-| `plot_tf_network` | `—` | ❌ MISSING |
+| `plot_gof` | `plot_gof` | ✅ ported |
+| `plot_module_metrics` | `plot_module_metrics` | ✅ ported |
+| `plot_network_graph` | `plot_network_graph` | ✅ ported |
+| `plot_tf_network` | `plot_tf_network` | ✅ ported |
 | `print` | `—` | ❌ MISSING |
 | `sparse_cor` | `sparse_cor` | ✅ ported |
 

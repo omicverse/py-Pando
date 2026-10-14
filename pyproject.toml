@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pypando"
-version = "0.1.0"
+version = "0.1.1"
 description = "Pure-Python Pando — gene regulatory network inference from paired single-cell RNA + ATAC (regions, motifs, per-gene TF x binding-site models, modules), AnnData-native, parity-tested against R."
 readme = "README.md"
 requires-python = ">=3.9"

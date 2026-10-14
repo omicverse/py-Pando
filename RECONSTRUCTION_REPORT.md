@@ -6,14 +6,14 @@
 
 | Field | Value |
 |---|---|
-| Python package | `pypando` 0.1.0 |
+| Python package | `pypando` 0.1.1 |
 | Upstream R package | Pando 1.1.1 (quadbio/Pando @ e8abb30, 2026-10-13) |
 | Upstream source | https://github.com/quadbio/Pando (MIT) |
 | Algorithm class | mixed: 14 outputs, each with its own pre-registered gate (`data/manifest.yaml`) |
 | Parity threshold (pre-registered) | per output; see §3.1 |
-| Final parity value | 13 of 14 gates pass against the installed R reference. The failing gate, `xgb_gain`, passes with value 1.0 when R honours Pando's xgboost parameters, which R xgboost ≥ 3 drops (§3.3). |
+| Final parity value | 13 of 14 pipeline gates pass against the installed R reference. The failing gate, `xgb_gain`, passes with value 1.0 when R honours Pando's xgboost parameters, which R xgboost ≥ 3 drops (§3.3). 0.1.1 adds the `get_tf_network` gates: 2 of 2 pass (§3.1b). |
 | Audit class | **B**: translation, plus exact BLAS-call reproduction for bit-identity, and two admissible accelerations |
-| Total LOC (`pypando/`) | 3,522 Python (R source: 3,404 lines, including 651 of plotting) |
+| Total LOC (`pypando/`) | 3,783 Python (R source: 3,404 lines, including 651 of plotting) |
 | Wall-clock vs R | `infer_grn(glm)`: 121 s vs 141 s (1.16×). `find_motifs`: 103 s vs 141 s on all regions (near-target scanning scans 4,623 of 8,127). `glmnet`, `xgb`, `bagging_ridge`: slower than R (§3.2). |
 | Memory tractability | not measured as a gain (same algorithms) |
 
@@ -34,7 +34,8 @@ Automatic audit: `AUDIT.md` (`engine.r_function_audit`). Statuses were reviewed 
 | `format_coefs` | same | ✅ | notebook 3 | |
 | `find_modules` | same | ✅ | fixture: identical modules | |
 | `get_network_graph` | same | ✅ graph | tutorial | layout through umap-learn, not uwot's random stream |
-| `get_tf_network`, `plot_tf_network` | — | ⛔ skipped | — | With Pando's default `keep_all_edges = FALSE`, `get_tf_network` filters on a column (`mean_padj`) it never creates, so for glm networks it errors in R |
+| `get_tf_network` | `get_tf_network` | ✅ **with a fix** | gates `tf_network_all_edges`, `tf_network_default_intent` | default pruning and `order` repaired as the function intends (§3.3, item 6); `keep_all_edges=True, order=inf` equals R |
+| `plot_tf_network` | `plot_tf_network` | ✅ (matplotlib) | smoke test | tree / circular layout like ggraph `layout = 'tree'`; coordinates not ggraph's |
 | `plot_gof`, `plot_module_metrics`, `plot_network_graph` | same | ✅ (matplotlib) | tutorial | |
 | `coef`, `gof`, `GetNetwork`, `GetGRN`, `DefaultNetwork`, `NetworkFeatures`, `NetworkTFs`, `NetworkRegions`, `NetworkModules`, `NetworkParams`, `NetworkGraph`, `Params` | same | ✅ | tutorial | |
 | `create_GRNData`, `aggregate_assay`, `GetAssaySummary`, `aggregate_matrix`, `sparse_cor` | same | ✅ | notebook 3 | |
@@ -66,7 +67,7 @@ R-side primitives reproduced with R's semantics:
 
 | Category | Coverage |
 |---|---|
-| Exported R functions (51) | 39 ported (including 4 classes), 12 skipped with a reason (`port.yaml`). Every algorithmic export is ported except `fit_brms` and `get_tf_network` / `plot_tf_network`. |
+| Exported R functions (51) | 41 ported (including 4 classes), 10 skipped with a reason (`port.yaml`). Every algorithmic export is ported except `fit_brms`. |
 | Internal helpers reachable from exports | 7 / 7 |
 
 ### 2.4 Deliberately skipped
@@ -74,7 +75,6 @@ R-side primitives reproduced with R's semantics:
 | R function | Reason |
 |---|---|
 | `fit_brms` | Bayesian models through Stan (`brms`); would need a Stan toolchain |
-| `get_tf_network`, `plot_tf_network` | errors in R for glm networks at default settings (see §2.1) |
 | ggplot2 theme helpers, `print` methods, `map_par`, Seurat accessor generics | plotting / R plumbing |
 
 ### 2.5 Dependencies reused from omicverse
@@ -120,6 +120,23 @@ Per-function parity on a separate deterministic design (notebook 3):
 - `aggregate_matrix` ≤ 5e-13;
 - `find_peaks_near_genes`: identical.
 
+### 3.1b `get_tf_network` (amendment 2026-10-14, gates pre-registered before the Python code)
+
+Module graph of the fixture's glm network (`get_network_graph` defaults). The 12 TFs with the largest out-degree were
+pre-registered; the graph has only 6 TFs with outgoing edges (BCL11A, TCF4, EBF1, PAX5, IKZF2, CUX2), so all 6 are tested.
+CUX2 has fewer than 3 targets and errors identically on both sides. Edge multisets are keyed by
+(from, to, end node, combined sign). Numeric edge attributes are `estimate`, `pval`, `padj`, `corr`, `n_*`, `dir` and `comb_dir`.
+
+| Gate | Reference | Threshold | Final value | Pass |
+|---|---|---|---|---|
+| tf_network_all_edges (`keep_all_edges=True`, `order=inf`) | installed Pando 1.1.1 | identical nodes and edges; normalised attribute error ≤ 1 (rtol 1e-10) | identical (446 edge rows); 5.5e-6 (relative ≈ 5e-16) | ✅ |
+| tf_network_default_intent (default; `order=2`; `keep_all_edges=True, order=3`) | Pando 1.1.1 with the two-line intent patch | same | identical (1,120 edge rows); 5.5e-6 | ✅ |
+| plot_tf_network | — | figure drawn from the same graph | matplotlib figure, one curve per distinct edge (smoke test) | ✅ |
+
+The module graph itself (112 edges) is identical to R's after the 0.1.1 fix to `get_network_graph` (CHANGELOG).
+How much the fix matters on the fixture: compared with installed R's default output, the intended default changes the
+kept paths for TCF4 (4 of 79 edge rows) and PAX5 (42 of 118). BCL11A, EBF1 and IKZF2 are unchanged.
+
 ### 3.2 Wall-clock on the fixture
 
 Single BLAS thread. The node is shared, so Python timings vary by about 10%.
@@ -142,6 +159,18 @@ Single BLAS thread. The node is shared, so Python timings vary by about 10%.
 3. **`fit_glmnet` default family.** R's default is the function `gaussian`, which sends glmnet to its generic `glmnet.path` solver. `infer_grn` always passes the string `"gaussian"`, which takes the elnet path. py-Pando ports the string path only.
 4. **glm bit-identity needs the same BLAS.** The glm network is bit-identical to R's when both use the same BLAS build and one BLAS thread. With another BLAS, near-collinear designs at the `dqrdc2` 1e-11 pivot tolerance can alias different columns, as R itself would with another BLAS.
 5. **`aggregate_rna_col` / `aggregate_peaks_col`.** Not supported: Pando reads `object@meta.data` from a `GRNData`, which has no such slot, so these options error in R.
+6. **`get_tf_network` default path: fixed, not reproduced.** Two bugs, read from the source (DISCOVERY.md amendment).
+   - The pruning tests `'padj' %in% colnames(grn_pruned)`, but that per-path table names its column `mean_log_padj`.
+     So for glm networks R silently keeps, per leaf, the path with the largest *mean estimate*. The guarded branch
+     filters on `mean_padj`, which exists nowhere.
+   - `filter(order <= order)` compares the column with itself, so `order` is ignored.
+
+   py-Pando keeps the most significant path, the largest mean `-log10(padj)`, and honours `order`. That
+   behaviour is gated against R patched with exactly these two changes; the patch lives only in
+   `tests/r_reference_driver.R`. `keep_all_edges=True, order=np.inf` reproduces the installed R.
+   (The 0.1.0 report said this path errors in R; it does not, it silently uses the estimate.)
+7. **`get_network_graph` in R needs tidyr attached.** Pando 1.1.1 calls `pivot_wider` without importing it, so the
+   default (`umap_method = 'weighted'`) errors unless `library(tidyr)` has been called.
 
 ### 3.3b R's control flow reproduced at the edges
 
@@ -159,6 +188,8 @@ Rscript tests/r_reference_driver.R data/fixture ref                    # + RETIC
 Rscript examples/r_per_function_dump.R ref_fn
 python tests/_run_candidate.py ref cand hg38.fa
 python tests/parity_check.py ref cand results.json
+PANDO_TF_NETWORK=1 Rscript tests/r_reference_driver.R data/fixture ref_tf glm
+python tests/_run_tf_network.py ref cand_tf hg38.fa && python tests/parity_check.py --tf ref_tf cand_tf
 PYPANDO_REF_DIR=ref PYPANDO_FASTA=hg38.fa PYPANDO_CAND_DIR=cand pytest tests/test_exact_match.py
 ```
 
@@ -189,7 +220,7 @@ The remaining glm cost is the BLAS-exact QR itself. Replacing it with a faster Q
 | Check | Status |
 |---|---|
 | `pip install .` and import in a clean environment | ✅ |
-| `pytest -q` | ✅ 9 smoke tests without R; `test_exact_match.py` passes 13 of 14 gates, with `xgb_gain` failing as in §3.3 (it skips without `PYPANDO_REF_DIR` / `PYPANDO_FASTA`) |
+| `pytest -q` | ✅ 11 smoke tests without R; `test_exact_match.py` passes 13 of 14 pipeline gates (`xgb_gain` fails as in §3.3) and both `get_tf_network` gates (skips without `PYPANDO_REF_DIR` / `PYPANDO_FASTA` / `PYPANDO_TF_REF_DIR`) |
 | `examples/compare_R_vs_Python.ipynb` (6 sections, executed) | ✅ |
 | `examples/tutorial_pbmc10k_multiome.ipynb` (one subsection per public function, executed) | ✅ |
 | `examples/function_by_function_R_parity.ipynb` (parameter tables, executed) | ✅ |
@@ -197,13 +228,14 @@ The remaining glm cost is the BLAS-exact QR itself. Replacing it with a faster Q
 | `examples/r_per_function_dump.R` | ✅ |
 | `README.md`, `MATH.md`, `ITERATION_LOG.md`, `DISCOVERY.md`, `AUDIT.md`, `port.yaml` | ✅ |
 | License | ✅ MIT (as upstream) |
-| Version | ✅ 0.1.0 |
+| Version | ✅ 0.1.1 (CHANGELOG.md) |
 | GitHub repo | ✅ https://github.com/omicverse/py-Pando (data assets: release `data-v1`) |
 | PyPI release | ⏳ left to the maintainer (build and `twine check` pass) |
 
 ## 6. Known limitations
 
-- `fit_brms`, `get_tf_network` and `plot_tf_network` are not ported.
+- `fit_brms` is not ported.
+- `get_tf_network` deliberately differs from R at its default settings (bug fix, §3.3 item 6).
 - glmnet without strong rules: slower than R, and tolerance-level differences on very wide designs.
 - Bit-identity of glm statistics needs the same BLAS build and one BLAS thread; otherwise expect agreement to about 1e-12 on most genes, with possible aliasing differences on near-singular designs.
 - `get_network_graph` UMAP coordinates differ from R's (uwot vs umap-learn).
@@ -214,4 +246,4 @@ Epione wraps py-Pando as `epione.grn.pando` (aristoteleo/epione PR #75).
 
 ## 8. Sign-off
 
-2026-10-13 — agent P (Claude, Epione session). Active time: one working session.
+2026-10-13 — agent P (Claude, Epione session); 0.1.1 amendment 2026-10-14.
