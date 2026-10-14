@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pypando"
+version = "0.1.0"
+description = "Pure-Python Pando — gene regulatory network inference from paired single-cell RNA + ATAC (regions, motifs, per-gene TF x binding-site models, modules), AnnData-native, parity-tested against R."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+keywords = [
+    "single-cell", "multiome", "scATAC-seq", "gene-regulatory-network", "pando",
+    "transcription-factor", "motif", "anndata",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+    "numpy>=1.23",
+    "scipy>=1.10",
+    "pandas>=1.5",
+    "anndata>=0.9",
+    "scikit-learn>=1.4",
+    "pyfaidx>=0.7",
+    "MOODS-python>=1.9.4",
+    "pooch>=1.6",
+]
+
+[project.optional-dependencies]
+xgb = ["xgboost>=1.7"]
+umap = ["umap-learn"]
+dev = ["pytest>=7", "xgboost>=1.7"]
+
+[project.urls]
+Homepage = "https://github.com/omicverse/py-Pando"
+Repository = "https://github.com/omicverse/py-Pando"
+Issues = "https://github.com/omicverse/py-Pando/issues"
+"Upstream R package" = "https://github.com/quadbio/Pando"
+
+[tool.setuptools.packages.find]
+include = ["pypando*"]
+exclude = ["tests*", "examples*", "Pando-ref*"]
+
+[tool.setuptools.package-data]
+pypando = ["data/*.gz"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::FutureWarning",
+]
