@@ -6,7 +6,7 @@
 
 | Field | Value |
 |---|---|
-| Python package | `pypando` 0.1.1 |
+| Python package | `pypando` 0.1.2 |
 | Upstream R package | Pando 1.1.1 (quadbio/Pando @ e8abb30, 2026-10-13) |
 | Upstream source | https://github.com/quadbio/Pando (MIT) |
 | Algorithm class | mixed: 14 outputs, each with its own pre-registered gate (`data/manifest.yaml`) |
@@ -35,8 +35,8 @@ Automatic audit: `AUDIT.md` (`engine.r_function_audit`). Statuses were reviewed 
 | `find_modules` | same | ✅ | fixture: identical modules | |
 | `get_network_graph` | same | ✅ graph | tutorial | layout through umap-learn, not uwot's random stream |
 | `get_tf_network` | `get_tf_network` | ✅ **with a fix** | gates `tf_network_all_edges`, `tf_network_default_intent` | default pruning and `order` repaired as the function intends (§3.3, item 6); `keep_all_edges=True, order=inf` equals R |
-| `plot_tf_network` | `plot_tf_network` | ✅ (matplotlib) | smoke test | tree / circular layout like ggraph `layout = 'tree'`; coordinates not ggraph's |
-| `plot_gof`, `plot_module_metrics`, `plot_network_graph` | same | ✅ (matplotlib) | tutorial | |
+| `plot_tf_network` | `plot_tf_network` | ✅ (matplotlib) | smoke test (ggraph coordinates on a toy graph) | ggraph `layout = 'tree'` reproduced: node coordinates equal R's on the fixture (0.1.2) |
+| `plot_gof`, `plot_module_metrics`, `plot_network_graph` | same | ✅ (matplotlib) | tutorial; side-by-side with R | restyled after Pando's ggplot2 figures in 0.1.2 |
 | `coef`, `gof`, `GetNetwork`, `GetGRN`, `DefaultNetwork`, `NetworkFeatures`, `NetworkTFs`, `NetworkRegions`, `NetworkModules`, `NetworkParams`, `NetworkGraph`, `Params` | same | ✅ | tutorial | |
 | `create_GRNData`, `aggregate_assay`, `GetAssaySummary`, `aggregate_matrix`, `sparse_cor` | same | ✅ | notebook 3 | |
 | `GRNData`, `RegulatoryNetwork`, `Regions`, `Network`, `Modules` (classes) | dataclasses | ✅ | | |
@@ -220,7 +220,7 @@ The remaining glm cost is the BLAS-exact QR itself. Replacing it with a faster Q
 | Check | Status |
 |---|---|
 | `pip install .` and import in a clean environment | ✅ |
-| `pytest -q` | ✅ 11 smoke tests without R; `test_exact_match.py` passes 13 of 14 pipeline gates (`xgb_gain` fails as in §3.3) and both `get_tf_network` gates (skips without `PYPANDO_REF_DIR` / `PYPANDO_FASTA` / `PYPANDO_TF_REF_DIR`) |
+| `pytest -q` | ✅ 12 smoke tests without R; `test_exact_match.py` passes 13 of 14 pipeline gates (`xgb_gain` fails as in §3.3) and both `get_tf_network` gates (skips without `PYPANDO_REF_DIR` / `PYPANDO_FASTA` / `PYPANDO_TF_REF_DIR`) |
 | `examples/compare_R_vs_Python.ipynb` (6 sections, executed) | ✅ |
 | `examples/tutorial_pbmc10k_multiome.ipynb` (one subsection per public function, executed) | ✅ |
 | `examples/function_by_function_R_parity.ipynb` (parameter tables, executed) | ✅ |
@@ -228,7 +228,7 @@ The remaining glm cost is the BLAS-exact QR itself. Replacing it with a faster Q
 | `examples/r_per_function_dump.R` | ✅ |
 | `README.md`, `MATH.md`, `ITERATION_LOG.md`, `DISCOVERY.md`, `AUDIT.md`, `port.yaml` | ✅ |
 | License | ✅ MIT (as upstream) |
-| Version | ✅ 0.1.1 (CHANGELOG.md) |
+| Version | ✅ 0.1.2 (CHANGELOG.md) |
 | GitHub repo | ✅ https://github.com/omicverse/py-Pando (data assets: release `data-v1`) |
 | PyPI release | ⏳ left to the maintainer (build and `twine check` pass) |
 

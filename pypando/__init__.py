@@ -116,4 +116,4 @@ __all__ = [
     "get_tf_network",
     "sparse_cor",
 ]
-__version__ = "0.1.1"
+__version__ = "0.1.2"

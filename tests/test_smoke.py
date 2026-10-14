@@ -13,7 +13,7 @@ from pypando.rrng import RRandom
 
 
 def test_import_and_bundled_data():
-    assert pp.__version__ == "0.1.1"
+    assert pp.__version__ == "0.1.2"
     motifs = pp.load_pando_motifs()
     m2t = pp.load_motif2tf()
     assert len(motifs) == 1590
@@ -135,16 +135,60 @@ def test_tf_network_paths_and_pruning():
         tf_network_from_edges(e, "D", ["D", "F"])
 
 
-def test_plot_tf_network_returns_figure():
+def test_tree_layout_matches_ggraph():
+    # ggraph 2.2.2 / igraph 2.3.4: create_layout(as_tbl_graph(edges), "tree", circular = TRUE) on the toy graph
+    from pypando.graph import tf_network_from_edges
+    from pypando.plots import _tree_layout
+
+    want = {True: {"A": (0, 0), "B": (0.288675, 0.166667), "C": (0, -0.333333), "D": (0.57735, 0.333333),
+                   "E": (-0.288675, 0.166667), "F": (0.866025, 0.5)},
+            False: {"A": (0, 0), "C": (0.288675, 0.166667), "D": (0.57735, 0.333333), "B": (0, -0.333333),
+                    "E": (-0.288675, 0.166667), "F": (0.866025, 0.5)}}
+    for keep, w in want.items():
+        r = tf_network_from_edges(_toy_module_graph(), "A", list("ABCDEF"), keep_all_edges=keep, order=np.inf)
+        e = r["edges"]
+        pos, _ = _tree_layout("A", list(zip(e.from_node, e.to_node)), list(r["nodes"]["name"]), True)
+        for v, xy in w.items():
+            assert np.allclose(pos[v], xy, atol=1e-6), (keep, v, pos[v], xy)
+
+
+def _toy_network():
+    from pypando.graph import tf_network_from_edges
+    from pypando.objects import Modules, Network
+
+    e = _toy_module_graph()
+    fit = pd.DataFrame({"target": list("BCDEFGH"), "rsq": [0.05, 0.3, 0.6, 0.2, 0.8, 0.0, 0.45],
+                        "nvariables": [3, 20, 150, 8, 1200, 0, 40]})
+    meta = e.rename(columns={"from_node": "tf", "to_node": "target"}).assign(
+        n_regions=[2, 5, 3, 1, 8, 4], n_tfs=[1, 1, 2, 2, 1, 1], n_genes=[3, 3, 2, 2, 3, 1])
+    net = Network(features=np.array(list("ABCDEF")), fit=fit, coefs=pd.DataFrame(),
+                  modules=Modules(meta=meta, params={"p_thresh": 0.05, "rsq_thresh": 0.1, "nvar_thresh": 10}))
+    nodes = pd.DataFrame({"name": list("ABCDEF"), "centrality": np.linspace(0.1, 0.3, 6),
+                          "UMAP_1": np.arange(6.0), "UMAP_2": np.arange(6.0) ** 0.5})
+    net.graphs["module_graph"] = {"nodes": nodes, "edges": e}
+    res = tf_network_from_edges(e, "A", list("ABCDEF"))
+    net.graphs["tf_graphs"] = {"A": {"nodes": res["nodes"], "edges": res["edges"]}}
+    return net, res
+
+
+def test_plots_return_figures():
     import matplotlib
 
     matplotlib.use("Agg")
-    from pypando.graph import tf_network_from_edges
-    from pypando.objects import Network
+    from matplotlib.collections import LineCollection
 
-    net = Network(features=np.array(list("ABCDEF")), fit=pd.DataFrame(), coefs=pd.DataFrame())
-    res = tf_network_from_edges(_toy_module_graph(), "A", list("ABCDEF"))
-    net.graphs["tf_graphs"] = {"A": {"nodes": res["nodes"], "edges": res["edges"]}}
+    net, res = _toy_network()
+    fig = pp.plot_gof(net)
+    assert len(fig.axes) == 3                          # scatter + two marginal histograms
+    fig = pp.plot_module_metrics(net)
+    assert [a.get_title(loc="left") for a in fig.axes] == ["# target genes\nper TF", "# regions\nper target gene",
+                                                           "# TFs per\ntarget gene"]
+    ax = pp.plot_network_graph(net)
+    lc = [c for c in ax.collections if isinstance(c, LineCollection)][0]
+    assert len(lc.get_segments()) == len(net.graphs["module_graph"]["edges"])
+    assert len(ax.texts) == 6                          # every gene labelled
+    n_edges = len(set(zip(res["edges"].from_node, res["edges"].to_node, res["edges"].dir)))
     for circ in (True, False):
         fig = pp.plot_tf_network(net, "A", circular=circ, label_nodes="all")
-        assert len(fig.axes[0].patches) == len(set(zip(res["edges"].from_node, res["edges"].to_node)))
+        lc = [c for c in fig.axes[0].collections if isinstance(c, LineCollection)][0]
+        assert len(lc.get_segments()) == n_edges

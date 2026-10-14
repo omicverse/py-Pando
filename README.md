@@ -50,10 +50,10 @@ Within Epione: `epione.grn.pando(rna, atac, genome="hg38", genes=targets)`.
 | `format_coefs`, `sparse_cor`, `aggregate_matrix`, `aggregate_assay`, `GetAssaySummary` | same names | exact |
 | `get_network_graph` | `pp.get_network_graph` | graph + PageRank; UMAP layout via umap-learn (not R's uwot stream) |
 | `coef`, `gof`, `GetNetwork`, `NetworkModules`, `NetworkTFs`, `NetworkRegions`, `NetworkFeatures`, `NetworkParams`, `NetworkGraph`, `DefaultNetwork`, `GetGRN`, `Params`, `create_GRNData` | same names | accessors |
-| `plot_gof`, `plot_module_metrics`, `plot_network_graph` | same names (matplotlib) | — |
+| `plot_gof`, `plot_module_metrics`, `plot_network_graph` | same names (matplotlib; `pip install 'pypando[plot]'` for repelled labels) | styled after Pando's ggplot2 figures: density-coloured gof scatter with marginal histograms and threshold lines, violins with boxplots, diagonal edges and magma PageRank nodes |
 | `fit_brms` | — | not ported (Stan) |
 | `get_tf_network` | `pp.get_tf_network` | **deliberate fix**: the default prunes each leaf to its most significant path (mean −log10 padj) and honours `order`; R 1.1.1 silently prunes on the mean estimate and ignores `order`. `keep_all_edges=True, order=np.inf` = R, identical edges; default = R with the intended fix, identical edges |
-| `plot_tf_network` | `pp.plot_tf_network` | matplotlib tree / circular layout (ggraph `layout = 'tree'`) |
+| `plot_tf_network` | `pp.plot_tf_network` | ggraph's `layout = 'tree'` reproduced (igraph Reingold-Tilford + ggraph's radial transform: node coordinates equal R's on the fixture) |
 
 Full numbers: [RECONSTRUCTION_REPORT.md](RECONSTRUCTION_REPORT.md) and `examples/compare_R_vs_Python.ipynb`.
 

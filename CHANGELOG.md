@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.2 — 2026-10-14
+
+### Changed: plots restyled after R Pando's ggplot2 / ggraph figures
+- **`plot_gof`.** Scatter of R² against model size with marginal histograms (top R², right model size, 20 bins).
+  - Points are coloured by local density (ggpointdensity's neighbour count, reversed Brewer reds).
+  - Models that fail `find_modules`' thresholds are faded, with dashed lines at the thresholds read from the object.
+  - Pseudo-log y axis, so a model with 0 variables can be drawn. Pando's axis labels.
+- **`plot_module_metrics`.** Violins with an inner boxplot, in Pando's panel order: target genes per TF on a pseudo-log
+  axis, then regions per target gene, then TFs per target gene. Pando's titles and labels.
+- **`plot_network_graph`.**
+  - Diagonal edges: orange activating, dark grey repressing.
+  - Nodes filled with magma by PageRank, sized 1–5 mm, grey outline.
+  - Every gene labelled, with labels repelled by adjustText and leader lines.
+- **`plot_tf_network`.** Same layout as ggraph's `layout = 'tree'`: igraph Reingold–Tilford with ggraph's radial
+  transform (radius = depth / max depth, clockwise from the top).
+  - Node coordinates equal ggraph's on the fixture (PAX5 sub-network) and on the toy graph in the smoke tests.
+  - Diagonal edges as ggraph draws them; point size and label boxes as in Pando.
+- New extra: `pip install 'pypando[plot]'` installs matplotlib and adjustText. Without adjustText, labels are not repelled.
+
+
 ## 0.1.1 — 2026-10-14
 
 ### Added
