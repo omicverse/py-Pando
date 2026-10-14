@@ -133,6 +133,60 @@ if (identical(Sys.getenv("PANDO_XGB_HONOUR_PARAMS"), "1")) {
   message("fit_xgb patched: Pando's params honoured via xgb.train")
 }
 
+# ---- TF sub-networks (PANDO_TF_NETWORK=1) -------------------------------------------
+# get_tf_network as installed, plus a reference implementing what its default path intends
+# (see DISCOVERY.md, "get_tf_network"): prune on the per-path mean -log10(padj) it computes
+# (`mean_log_padj`), and honour the `order` argument. The patched copy is a reference only.
+tf_network_intent <- function() {
+  f <- Pando:::get_tf_network.GRNData
+  src <- paste(deparse(f, width.cutoff = 500L), collapse = "\n")
+  subs <- c('"padj" %in% colnames(grn_pruned)' = '"mean_log_padj" %in% colnames(grn_pruned)',
+            "mean_padj == max(mean_padj)" = "mean_log_padj == max(mean_log_padj)",
+            "filter(order <= order)" = "filter(order <= .env$order)")
+  for (k in names(subs)) {
+    stopifnot(lengths(regmatches(src, gregexpr(k, src, fixed = TRUE))) == 1L)
+    src <- sub(k, subs[[k]], src, fixed = TRUE)
+  }
+  g <- eval(parse(text = src)); environment(g) <- asNamespace("Pando"); g
+}
+export_tf_networks <- function(g, out) {
+  saveRDS(g, file.path(out, "grn_glm_modules.rds"))
+  # Pando 1.1.1's get_network_graph calls tidyr::pivot_wider without importing it; attach tidyr.
+  suppressPackageStartupMessages(library(tidyr))
+  g <- get_network_graph(g, verbose = FALSE)
+  mg <- NetworkGraph(g, graph = "module_graph")
+  ed <- as.data.frame(tidygraph::as_tibble(tidygraph::activate(mg, "edges")))
+  deg <- table(ed$from_node)
+  deg <- deg[order(-as.integer(deg), names(deg), method = "radix")]
+  tfs <- head(names(deg), 12L)
+  writeLines(tfs, file.path(out, "tf_network_tfs.txt"))
+  fwrite(ed[, setdiff(names(ed), c("from", "to"))], file.path(out, "module_graph_edges.tsv"), sep = "\t", na = "NA")
+  intent <- tf_network_intent()
+  variants <- list(
+    R_all = function(tf) get_tf_network(g, tf = tf, keep_all_edges = TRUE, verbose = FALSE),
+    R_default = function(tf) get_tf_network(g, tf = tf, verbose = FALSE),
+    intent_default = function(tf) intent(g, tf = tf, verbose = FALSE),
+    intent_all = function(tf) intent(g, tf = tf, keep_all_edges = TRUE, verbose = FALSE),
+    intent_default_o2 = function(tf) intent(g, tf = tf, order = 2, verbose = FALSE))
+  rows <- list(); status <- list()
+  for (v in names(variants)) for (tf in tfs) {
+    t0 <- tic()
+    res <- tryCatch(variants[[v]](tf), error = function(e) conditionMessage(e))
+    key <- paste(v, tf, sep = "/")
+    if (is.character(res)) { status[[key]] <- paste("error:", res); next }
+    tg <- NetworkGraph(res, graph = "tf_graphs")[[tf]]
+    e <- as.data.frame(tidygraph::as_tibble(tidygraph::activate(tg, "edges")))
+    n <- tidygraph::as_tibble(tidygraph::activate(tg, "nodes"))$name
+    e$from_name <- n[e$from]; e$to_name <- n[e$to]
+    e$variant <- v; e$root <- tf; e$edge_index <- seq_len(nrow(e))
+    rows[[key]] <- e[, setdiff(names(e), c("from", "to"))]
+    status[[key]] <- sprintf("ok: %d edges, %d nodes, %.1f s", nrow(e), length(n), tic() - t0)
+  }
+  fwrite(rbindlist(rows, fill = TRUE), file.path(out, "tf_networks.tsv"), sep = "\t", na = "NA")
+  writeBin(as.numeric(rbindlist(rows, fill = TRUE)$estimate), file.path(out, "tf_networks_estimate.f64"))
+  write(toJSON(status, auto_unbox = TRUE, pretty = TRUE), file.path(out, "tf_networks_status.json"))
+}
+
 np_seed <- function() {
   np <- reticulate::import("numpy", convert = FALSE); np$random$seed(SEED)
 }
@@ -158,6 +212,7 @@ for (m in methods) {
     mods <- NetworkModules(g)
     fwrite(as.data.frame(mods@meta), file.path(out, "modules_meta.tsv"), sep = "\t", na = "NA")
     write(toJSON(mods@features, auto_unbox = FALSE), file.path(out, "modules_features.json"))
+    if (identical(Sys.getenv("PANDO_TF_NETWORK"), "1")) export_tf_networks(g, out)
   }
 }
 si <- sessionInfo()

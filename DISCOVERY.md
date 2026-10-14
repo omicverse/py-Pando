@@ -79,3 +79,60 @@ Native-Python equivalents for the deps without a mirror:
 | `igraph`, `tidygraph`, `ggraph`, `uwot`, `irlba` | network graph layout (`get_network_graph`) | networkx for the graph; layout/plotting out of scope |
 | `ggplot2`, `ggpointdensity`, `pals`, `patchwork`, `scales` | plotting | out of scope (plotting) |
 | `pbapply`, `foreach` | progress bars / parallelism | plain loop / joblib |
+
+## Amendment 2026-10-14 — `get_tf_network` / `plot_tf_network`
+
+Written from `R/plots.R` (Pando 1.1.1 @ e8abb30, lines 445–668) before any Python code for these functions.
+
+### What the function does
+
+`get_tf_network(object, tf, graph = 'module_graph', features = NULL, order = 3, keep_all_edges = FALSE)` builds a
+tree-like sub-network rooted at `tf` from the module graph of `get_network_graph`. The module graph has one
+edge per TF → target pair in the module table, with `estimate`, `padj` and the other module columns as edge attributes.
+
+1. `features` defaults to the network's target genes, intersected with the graph's nodes.
+2. `igraph::all_shortest_paths(gene_graph, tf, features, mode = 'out')` lists every shortest path from `tf` to each feature.
+   With fewer than 3 paths, the function stops.
+3. For each path it computes:
+   - `dir`, the product of the edge signs;
+   - `order`, the number of edges;
+   - `mean_estimate`, the mean edge estimate;
+   - if the edges carry `padj`, `mean_log_padj`, the mean of `-log10(padj)` over the path's edges.
+4. Paths are grouped by end node. A pruning step then keeps, per end node:
+   - every path when `keep_all_edges = TRUE`;
+   - otherwise, the direct edge (`order == 1`) plus the strongest path. The doc says "prune to the strongest overall
+     connection", so strongest means the largest `mean_log_padj` (the most significant path) when p-values exist, and
+     the largest `mean_estimate` otherwise.
+5. The edges of the kept paths are joined back to the module graph's edges. The result carries `end_node` and
+   `comb_dir`, and has one row per (edge, end node, combined sign). It is stored in `graphs$tf_graphs[[tf]]`.
+
+`plot_tf_network` draws that graph with `ggraph(layout = 'tree', circular = TRUE)`:
+- diagonal edges coloured by `dir`;
+- labels on the network's TFs, on every node, or on the root only.
+
+### The bugs, exactly
+
+1. **The default pruning never uses p-values.** The test is `'padj' %in% colnames(grn_pruned)`, but `grn_pruned` is the
+   per-path table, whose column is named `mean_log_padj`. It never has a `padj` column, so the test is always FALSE.
+   The branch it guards filters on `mean_padj`, a column that exists nowhere. For a glm network, the default therefore
+   falls through to `mean_estimate == max(mean_estimate)`. That keeps the path with the most positive mean
+   coefficient, so a strongly significant repressive path always loses to a weak activating one. The p-value branch
+   is dead code; if it were reached, it would fail on `mean_padj`.
+   (Correction to the 0.1.0 report: R does not error on this path, it silently uses the estimate.)
+2. **`order` is ignored.** `filter(order <= order)` sits inside dplyr's data mask, so both sides are the per-path column
+   `order`. The test is always TRUE and the documented "maximal order of the graph" has no effect.
+
+### Intended semantics implemented in py-Pando
+
+- If the per-path table has `mean_log_padj`, keep per end node the paths with `order == 1` or
+  `mean_log_padj == max(mean_log_padj)`. Otherwise keep `order == 1` or `mean_estimate == max(mean_estimate)`, as R does.
+- Keep only paths with `order <= order` (the argument).
+- Everything else follows R exactly:
+  - the shortest-path set;
+  - R's `mean` (long-double accumulation with the second refinement pass) for the path statistics, so ties resolve as in R;
+  - the join back to the module edges;
+  - `comb_dir`.
+
+With `keep_all_edges = True` and `order = inf`, the result is the installed R function's output (gate
+`tf_network_all_edges`). Every other setting is gated against R patched with exactly these two changes
+(`tf_network_intent()` in `tests/r_reference_driver.R`; gate `tf_network_default_intent`).

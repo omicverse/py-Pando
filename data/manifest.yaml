@@ -121,6 +121,32 @@ outputs:
     metric: per TF and sign, Jaccard of module genes and of module regions; mean over modules; identical module TF sets
     threshold: {mean_jaccard: 0.99, tf_set_jaccard: 1.0}
 
+  # --- AMENDMENT 2026-10-14: get_tf_network / plot_tf_network (pre-registered before any Python code) ---
+  # Fixture: the glm module graph (get_network_graph defaults); TFs = the 12 with the largest
+  # out-degree in it (ties by name). R reference: tests/r_reference_driver.R with PANDO_TF_NETWORK=1.
+  # Both paths are compared as edge multisets keyed by (from_node, to_node, end_node, comb_dir).
+  - name: tf_network_all_edges
+    function: get_tf_network(keep_all_edges=True)
+    class: deterministic-strict
+    reference: installed Pando 1.1.1 (keep_all_edges = TRUE; R ignores `order`, so py-Pando runs order=inf)
+    metric: identical node sets and edge multisets per TF; max |delta| / (rtol * |ref| + atol) over numeric edge attributes
+    parity_rtol: 1.0e-10
+    parity_atol: 1.0e-10
+    threshold: {identical_nodes: true, identical_edges: true, attr: 1.0}
+  - name: tf_network_default_intent
+    function: get_tf_network() (keep_all_edges=False, order=3), also order=2, and keep_all_edges=True with order=3
+    class: deterministic-strict
+    reference: Pando 1.1.1 with the minimal patch implementing the intended default path (DISCOVERY.md); patch lives only in the R driver
+    metric: identical node sets and edge multisets per TF and variant; numeric edge attributes as above
+    parity_rtol: 1.0e-10
+    parity_atol: 1.0e-10
+    threshold: {identical_nodes: true, identical_edges: true, attr: 1.0}
+  - name: plot_tf_network
+    function: plot_tf_network
+    class: visual
+    metric: returns a matplotlib figure drawn from the get_tf_network graph (tree / circular dendrogram layout); no coordinate or pixel gate
+    threshold: {figure_from_same_graph: true}
+
 not_ported:
   - fit_brms: "Bayesian models via Stan (brms); no Python Stan dependency is taken on. Listed as skipped in port.yaml."
 
